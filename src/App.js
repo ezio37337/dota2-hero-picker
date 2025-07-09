@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Brain, Zap, Dumbbell, Star, X, ChevronLeft } from 'lucide-react';
+import { Brain, Zap, Dumbbell, Star, X, ChevronLeft, Users, UserX, Loader2, RefreshCw } from 'lucide-react';
+import { initializeStaticData, fetchPlayerData, processHeroData } from './services/dataProcessor';
+import { getHeroRecommendations, calculateTeamWinRate } from './utils/calculations';
+import { savePlayerProfiles, loadPlayerProfiles } from './utils/storage';
 
-// 英雄数据 - 每个英雄对其他19个英雄都有克制值和合作值
+// 英雄数据 - 保持原有的20个英雄
 const heroesData = [
   // 智力英雄
   { id: 1, name: '水晶室女', type: '智力英雄' },
@@ -32,35 +35,6 @@ const heroesData = [
   { id: 20, name: '风行者', type: '全才英雄' }
 ];
 
-// 生成每个英雄对其他19个英雄的克制值和合作值
-const generateHeroRelations = () => {
-  const relations = {};
-  
-  heroesData.forEach(hero => {
-    relations[hero.id] = {
-      counters: {}, // 对其他英雄的克制值 (0-100)
-      synergies: {} // 与其他英雄的合作值 (0-100)
-    };
-    
-    heroesData.forEach(otherHero => {
-      if (hero.id !== otherHero.id) {
-        // 生成克制值 (0-100，数值越高表示克制越强)
-        const counterValue = Math.floor(Math.random() * 101);
-        relations[hero.id].counters[otherHero.id] = counterValue;
-        
-        // 生成合作值 (0-100，数值越高表示配合越好)
-        const synergyValue = Math.floor(Math.random() * 101);
-        relations[hero.id].synergies[otherHero.id] = synergyValue;
-      }
-    });
-  });
-  
-  return relations;
-};
-
-// 初始化英雄关系数据
-const heroRelations = generateHeroRelations();
-
 const HERO_TYPES = {
   '智力英雄': { icon: Brain, color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-500' },
   '敏捷英雄': { icon: Zap, color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-500' },
@@ -76,125 +50,142 @@ function Dota2HeroPicker() {
   
   // 弹窗相关状态
   const [showModal, setShowModal] = useState(false);
-  const [modalStep, setModalStep] = useState('type'); // 'type' | 'hero'
+  const [modalStep, setModalStep] = useState('type');
   const [selectedType, setSelectedType] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  
+  // 新增：玩家选择相关状态
+  const [currentPlayer, setCurrentPlayer] = useState(null); // null 表示"无特定玩家"
+  const [playerProfiles, setPlayerProfiles] = useState(loadPlayerProfiles());
+  const [showPlayerSettings, setShowPlayerSettings] = useState(false);
+  
+  // 新增：数据加载状态
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState('正在初始化...');
+  const [processedData, setProcessedData] = useState(null);
+  const [playerData, setPlayerData] = useState({});
+  const [error, setError] = useState(null);
 
-  // 计算英雄推荐
-  const calculateRecommendations = (allies, enemies) => {
-    if (allies.length === 5) return [];
-
-    const availableHeroes = heroesData.filter(hero => 
-      !allies.some(a => a.id === hero.id) && 
-      !enemies.some(e => e.id === hero.id)
-    );
-
-    const heroScores = availableHeroes.map(hero => {
-      let score = 0;
-
-      // 对敌方英雄的克制分数
-      enemies.forEach(enemy => {
-        const counterValue = heroRelations[hero.id].counters[enemy.id] || 0;
-        score += counterValue * 0.5; // 克制值权重
-      });
-
-      // 与我方英雄的合作分数
-      allies.forEach(ally => {
-        const synergyValue = heroRelations[hero.id].synergies[ally.id] || 0;
-        score += synergyValue * 0.4; // 合作值权重
-      });
-
-      // 英雄类型平衡分数
-      const typeCounts = { '智力英雄': 0, '敏捷英雄': 0, '力量英雄': 0, '全才英雄': 0 };
-      allies.forEach(ally => typeCounts[ally.type]++);
-      
-      if (typeCounts[hero.type] === 0) score += 30; // 缺失类型额外分数
-      else if (typeCounts[hero.type] === 1) score += 15;
-
-      // 添加随机因子避免完全相同的分数
-      score += Math.random() * 5;
-
-      return { ...hero, score: Math.round(score) };
-    });
-
-    return heroScores
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3);
-  };
-
-  // 计算胜率
-  const calculateWinRate = (allies, enemies) => {
-    if (allies.length !== 5 || enemies.length !== 5) return null;
-
-    let allyScore = 0;
-    let enemyScore = 0;
-
-    // 计算我方优势分数
-    allies.forEach(ally => {
-      enemies.forEach(enemy => {
-        // 我方对敌方的克制值
-        const allyCounterValue = heroRelations[ally.id].counters[enemy.id] || 0;
-        allyScore += allyCounterValue;
+  // 初始化静态数据
+  useEffect(() => {
+    const loadStaticData = async () => {
+      try {
+        setIsLoading(true);
+        setLoadingMessage('正在加载英雄数据...');
         
-        // 敌方对我方的克制值
-        const enemyCounterValue = heroRelations[enemy.id].counters[ally.id] || 0;
-        enemyScore += enemyCounterValue;
-      });
-    });
-
-    // 计算团队内部合作分数
-    for (let i = 0; i < allies.length; i++) {
-      for (let j = i + 1; j < allies.length; j++) {
-        const synergy1 = heroRelations[allies[i].id].synergies[allies[j].id] || 0;
-        const synergy2 = heroRelations[allies[j].id].synergies[allies[i].id] || 0;
-        allyScore += (synergy1 + synergy2) / 2;
+        const { heroStats, counterMatrix } = await initializeStaticData();
+        const processed = processHeroData(heroStats, counterMatrix);
+        setProcessedData(processed);
+        
+        setIsLoading(false);
+      } catch (err) {
+        console.error('加载数据失败:', err);
+        setError('加载数据失败，请刷新页面重试');
+        setIsLoading(false);
       }
-    }
-
-    for (let i = 0; i < enemies.length; i++) {
-      for (let j = i + 1; j < enemies.length; j++) {
-        const synergy1 = heroRelations[enemies[i].id].synergies[enemies[j].id] || 0;
-        const synergy2 = heroRelations[enemies[j].id].synergies[enemies[i].id] || 0;
-        enemyScore += (synergy1 + synergy2) / 2;
-      }
-    }
-
-    // 英雄类型平衡加分
-    const calculateTypeBalance = (team) => {
-      const typeCounts = { '智力英雄': 0, '敏捷英雄': 0, '力量英雄': 0, '全才英雄': 0 };
-      team.forEach(hero => typeCounts[hero.type]++);
-      
-      let balance = 0;
-      Object.values(typeCounts).forEach(count => {
-        if (count > 0) balance += 50; // 每种类型存在加分
-        if (count === 1) balance += 25; // 单一英雄类型最优
-      });
-      
-      return balance;
     };
-
-    allyScore += calculateTypeBalance(allies);
-    enemyScore += calculateTypeBalance(enemies);
-
-    const totalScore = allyScore + enemyScore;
-    const allyWinRate = totalScore > 0 ? Math.round((allyScore / totalScore) * 100) : 50;
     
-    return {
-      ally: Math.max(5, Math.min(95, allyWinRate)), // 限制在5-95%之间
-      enemy: Math.max(5, Math.min(95, 100 - allyWinRate))
-    };
+    loadStaticData();
+  }, []);
+
+  // 加载玩家数据
+  const loadPlayerDataForProfile = async (playerId) => {
+    if (!playerProfiles[playerId]?.steamId) {
+      return;
+    }
+    
+    try {
+      setLoadingMessage(`正在加载${playerProfiles[playerId].name}的数据...`);
+      const data = await fetchPlayerData(playerId, playerProfiles[playerId].steamId);
+      
+      if (data) {
+        setPlayerData(prev => ({
+          ...prev,
+          [playerId]: data
+        }));
+      }
+    } catch (err) {
+      console.error(`加载玩家${playerId}数据失败:`, err);
+    }
   };
+
+  // 切换玩家时加载数据
+  useEffect(() => {
+    if (currentPlayer && !playerData[currentPlayer]) {
+      loadPlayerDataForProfile(currentPlayer);
+    }
+  }, [currentPlayer]);
 
   // 更新推荐和胜率
   useEffect(() => {
-    const newRecommendations = calculateRecommendations(allyHeroes, enemyHeroes);
+    if (!processedData) return;
+    
+    const availableHeroes = heroesData.filter(hero => 
+      !allyHeroes.some(a => a.id === hero.id) && 
+      !enemyHeroes.some(e => e.id === hero.id)
+    );
+    
+    const currentPlayerData = currentPlayer ? playerData[currentPlayer] : null;
+    const hasPlayer = !!currentPlayer && !!currentPlayerData;
+    
+    const newRecommendations = getHeroRecommendations(
+      availableHeroes,
+      allyHeroes,
+      enemyHeroes,
+      currentPlayerData,
+      processedData,
+      hasPlayer
+    );
+    
     setRecommendations(newRecommendations);
     
-    const newWinRate = calculateWinRate(allyHeroes, enemyHeroes);
+    const newWinRate = calculateTeamWinRate(
+      allyHeroes,
+      enemyHeroes,
+      currentPlayerData,
+      processedData,
+      hasPlayer
+    );
+    
     setWinRate(newWinRate);
-  }, [allyHeroes, enemyHeroes]);
+  }, [allyHeroes, enemyHeroes, processedData, currentPlayer, playerData]);
 
-  // 打开选择模态框
+  // 保存玩家配置
+  const savePlayerConfig = () => {
+    savePlayerProfiles(playerProfiles);
+    setShowPlayerSettings(false);
+  };
+
+  // 更新玩家Steam ID
+  const updatePlayerSteamId = (playerId, steamId) => {
+    setPlayerProfiles(prev => ({
+      ...prev,
+      [playerId]: {
+        ...prev[playerId],
+        steamId: steamId
+      }
+    }));
+  };
+
+  // 刷新玩家数据
+  const refreshPlayerData = async (playerId) => {
+    if (!playerProfiles[playerId]?.steamId) {
+      alert('请先设置Steam ID');
+      return;
+    }
+    
+    // 清除缓存的玩家数据
+    setPlayerData(prev => {
+      const newData = { ...prev };
+      delete newData[playerId];
+      return newData;
+    });
+    
+    // 重新加载
+    await loadPlayerDataForProfile(playerId);
+  };
+
+  // 其他原有函数保持不变...
   const openHeroSelection = (slotIndex, team) => {
     setSelectedSlot({ index: slotIndex, team });
     setModalStep('type');
@@ -202,18 +193,15 @@ function Dota2HeroPicker() {
     setShowModal(true);
   };
 
-  // 选择英雄类型
   const selectHeroType = (type) => {
     setSelectedType(type);
     setModalStep('hero');
   };
 
-  // 选择英雄
   const selectHero = (hero) => {
     const currentTeam = selectedSlot.team === 'ally' ? allyHeroes : enemyHeroes;
     const otherTeam = selectedSlot.team === 'ally' ? enemyHeroes : allyHeroes;
     
-    // 检查英雄是否已被选择
     if (currentTeam.some(h => h.id === hero.id) || otherTeam.some(h => h.id === hero.id)) {
       return;
     }
@@ -231,7 +219,6 @@ function Dota2HeroPicker() {
     closeModal();
   };
 
-  // 移除英雄
   const removeHero = (slotIndex, team) => {
     if (team === 'ally') {
       const newAllies = [...allyHeroes];
@@ -244,7 +231,6 @@ function Dota2HeroPicker() {
     }
   };
 
-  // 关闭模态框
   const closeModal = () => {
     setShowModal(false);
     setModalStep('type');
@@ -252,19 +238,25 @@ function Dota2HeroPicker() {
     setSelectedSlot(null);
   };
 
-  // 返回类型选择
   const backToTypeSelection = () => {
     setModalStep('type');
     setSelectedType(null);
   };
 
-  // 重置选择
   const resetPick = () => {
     setAllyHeroes([]);
     setEnemyHeroes([]);
     setRecommendations([]);
     setWinRate(null);
     closeModal();
+  };
+
+  const getAvailableHeroesByType = (type) => {
+    return heroesData.filter(hero => 
+      hero.type === type &&
+      !allyHeroes.some(h => h.id === hero.id) && 
+      !enemyHeroes.some(h => h.id === hero.id)
+    );
   };
 
   // 英雄卡片组件
@@ -322,21 +314,124 @@ function Dota2HeroPicker() {
     );
   };
 
-  // 获取可用英雄
-  const getAvailableHeroesByType = (type) => {
-    return heroesData.filter(hero => 
-      hero.type === type &&
-      !allyHeroes.some(h => h.id === hero.id) && 
-      !enemyHeroes.some(h => h.id === hero.id)
+  // 如果正在加载，显示加载界面
+  if (isLoading) {
+    return (
+      <div className="max-w-6xl mx-auto p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-blue-600" />
+          <h2 className="text-xl font-semibold mb-2">正在加载数据...</h2>
+          <p className="text-gray-600">{loadingMessage}</p>
+        </div>
+      </div>
     );
-  };
+  }
+
+  // 如果有错误，显示错误信息
+  if (error) {
+    return (
+      <div className="max-w-6xl mx-auto p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+          <div className="text-red-600 mb-4">
+            <X className="w-12 h-12 mx-auto" />
+          </div>
+          <h2 className="text-xl font-semibold mb-2">加载失败</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            刷新页面
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-lg shadow-lg p-6">
         <h1 className="text-3xl font-bold text-center mb-6 text-gray-800">
-          DOTA2 英雄选择推荐系统 v1.2
+          DOTA2 英雄选择推荐系统 v2.0
         </h1>
+
+        {/* 玩家选择区域 */}
+        <div className="mb-6 bg-gray-50 p-4 rounded-lg">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold">选择玩家</h3>
+            <button
+              onClick={() => setShowPlayerSettings(!showPlayerSettings)}
+              className="text-sm text-blue-600 hover:text-blue-700"
+            >
+              {showPlayerSettings ? '完成设置' : '设置Steam ID'}
+            </button>
+          </div>
+          
+          {/* 玩家选择按钮 */}
+          <div className="flex gap-3 flex-wrap">
+            <button
+              onClick={() => setCurrentPlayer(null)}
+              className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                currentPlayer === null
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+              }`}
+            >
+              <UserX className="w-4 h-4 inline mr-2" />
+              无特定玩家
+            </button>
+            
+            {Object.entries(playerProfiles).map(([key, profile]) => (
+              <button
+                key={key}
+                onClick={() => setCurrentPlayer(key)}
+                className={`px-4 py-2 rounded-lg border-2 transition-all flex items-center gap-2 ${
+                  currentPlayer === key
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                {profile.name}
+                {playerData[key] && (
+                  <span className="text-xs bg-green-500 text-white px-1 rounded">已加载</span>
+                )}
+              </button>
+            ))}
+          </div>
+          
+          {/* Steam ID 设置面板 */}
+          {showPlayerSettings && (
+            <div className="mt-4 p-4 bg-white rounded-lg border">
+              <h4 className="font-semibold mb-3">设置玩家Steam ID</h4>
+              {Object.entries(playerProfiles).map(([key, profile]) => (
+                <div key={key} className="mb-3 flex items-center gap-3">
+                  <label className="w-20 text-sm">{profile.name}:</label>
+                  <input
+                    type="text"
+                    placeholder="输入Steam ID (32位数字)"
+                    value={profile.steamId || ''}
+                    onChange={(e) => updatePlayerSteamId(key, e.target.value)}
+                    className="flex-1 px-3 py-1 border rounded focus:outline-none focus:border-blue-500"
+                  />
+                  <button
+                    onClick={() => refreshPlayerData(key)}
+                    className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                    disabled={!profile.steamId}
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={savePlayerConfig}
+                className="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                保存配置
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* 控制面板 */}
         <div className="mb-6 flex justify-center gap-4">
@@ -348,7 +443,7 @@ function Dota2HeroPicker() {
           </button>
         </div>
 
-        {/* 已选英雄区域 */}
+        {/* 已选英雄区域 - 保持原有代码 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* 我方英雄 */}
           <div className="bg-blue-50 p-4 rounded-lg">
@@ -422,6 +517,11 @@ function Dota2HeroPicker() {
                 <div>敌方胜率</div>
               </div>
             </div>
+            {currentPlayer && (
+              <div className="text-center text-sm mt-2 opacity-80">
+                基于{playerProfiles[currentPlayer].name}的数据计算
+              </div>
+            )}
           </div>
         )}
 
@@ -440,10 +540,17 @@ function Dota2HeroPicker() {
                 />
               ))}
             </div>
+            <div className="text-sm text-gray-600 mt-3">
+              {currentPlayer ? (
+                <span>推荐基于：版本胜率(35%) + 克制关系(40%) + 配合关系(15%) + 熟练度(10%)</span>
+              ) : (
+                <span>推荐基于：版本胜率(40%) + 克制关系(60%)</span>
+              )}
+            </div>
           </div>
         )}
 
-        {/* 选择英雄模态框 */}
+        {/* 选择英雄模态框 - 保持原有代码 */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
@@ -524,14 +631,13 @@ function Dota2HeroPicker() {
 
         {/* 说明 */}
         <div className="mt-6 text-sm text-gray-600 bg-gray-100 p-4 rounded-lg">
-          <h4 className="font-bold mb-2">v1.2版本更新说明：</h4>
+          <h4 className="font-bold mb-2">v2.0版本更新说明：</h4>
           <ul className="list-disc list-inside space-y-1">
-            <li>优化选择流程：点击空位 → 选择英雄类型 → 选择具体英雄</li>
-            <li>移除了底部英雄池，采用弹窗式选择界面</li>
-            <li>支持分类型浏览和选择英雄，提升用户体验</li>
-            <li>保留推荐算法和胜率计算功能</li>
-            <li>可随时移除已选英雄，支持重新选择</li>
-            <li>显示每个类型的可选英雄数量</li>
+            <li>集成OpenDota真实数据，包含英雄胜率和克制关系</li>
+            <li>支持玩家个性化推荐，输入Steam ID获取熟练度数据</li>
+            <li>动态权重调整：有玩家数据时考虑配合和熟练度，无玩家时仅基于胜率和克制</li>
+            <li>数据自动缓存，减少API调用次数</li>
+            <li>支持多玩家配置快速切换</li>
           </ul>
         </div>
       </div>
