@@ -1,43 +1,222 @@
-// 英雄ID映射表
-// 将你现有的英雄映射到OpenDota的英雄ID
+// 自动生成的英雄映射文件
+// 生成时间: 2025-07-09T07:42:00.537Z
+// 数据来源: OpenDota API
+
 export const heroMapping = {
-  // 你的英雄数据 -> OpenDota英雄ID
-  '水晶室女': 5,      // Crystal Maiden
-  '谜团': 33,         // Enigma
-  '祈求者': 74,       // Invoker
-  '死亡先知': 43,     // Death Prophet
-  '巫医': 30,         // Witch Doctor
-  
-  '幻影刺客': 44,     // Phantom Assassin
-  '敌法师': 1,        // Anti-Mage
-  '影魔': 11,         // Shadow Fiend
-  '复仇之魂': 20,     // Vengeful Spirit
-  '圣堂刺客': 46,     // Templar Assassin
-  
-  '龙骑士': 49,       // Dragon Knight
-  '斧王': 2,          // Axe
-  '裂魂人': 71,       // Spirit Breaker
-  '军团指挥官': 104,   // Legion Commander
-  '潮汐猎人': 29,     // Tidehunter
-  
-  '痛苦女王': 39,     // Queen of Pain
-  '巫妖': 31,         // Lich
-  '炸弹人': 73,       // Techies
-  '暗影牧师': 27,     // Shadow Priest (Dazzle)
-  '风行者': 21        // Windranger
+  "Anti-Mage": 1,
+  "Axe": 2,
+  "Bane": 3,
+  "Bloodseeker": 4,
+  "Crystal Maiden": 5,
+  "Drow Ranger": 6,
+  "Earthshaker": 7,
+  "Juggernaut": 8,
+  "Mirana": 9,
+  "Morphling": 10,
+  "Shadow Fiend": 11,
+  "Phantom Lancer": 12,
+  "Puck": 13,
+  "Pudge": 14,
+  "Razor": 15,
+  "Sand King": 16,
+  "Storm Spirit": 17,
+  "Sven": 18,
+  "Tiny": 19,
+  "Vengeful Spirit": 20,
+  "Windranger": 21,
+  "Zeus": 22,
+  "Kunkka": 23,
+  "Lina": 25,
+  "Lion": 26,
+  "Shadow Shaman": 27,
+  "Slardar": 28,
+  "Tidehunter": 29,
+  "Witch Doctor": 30,
+  "Lich": 31,
+  "Riki": 32,
+  "Enigma": 33,
+  "Tinker": 34,
+  "Sniper": 35,
+  "Necrophos": 36,
+  "Warlock": 37,
+  "Beastmaster": 38,
+  "Queen of Pain": 39,
+  "Venomancer": 40,
+  "Faceless Void": 41,
+  "Wraith King": 42,
+  "Death Prophet": 43,
+  "Phantom Assassin": 44,
+  "Pugna": 45,
+  "Templar Assassin": 46,
+  "Viper": 47,
+  "Luna": 48,
+  "Dragon Knight": 49,
+  "Dazzle": 50,
+  "Clockwerk": 51,
+  "Leshrac": 52,
+  "Nature's Prophet": 53,
+  "Lifestealer": 54,
+  "Dark Seer": 55,
+  "Clinkz": 56,
+  "Omniknight": 57,
+  "Enchantress": 58,
+  "Huskar": 59,
+  "Night Stalker": 60,
+  "Broodmother": 61,
+  "Bounty Hunter": 62,
+  "Weaver": 63,
+  "Jakiro": 64,
+  "Batrider": 65,
+  "Chen": 66,
+  "Spectre": 67,
+  "Ancient Apparition": 68,
+  "Doom": 69,
+  "Ursa": 70,
+  "Spirit Breaker": 71,
+  "Gyrocopter": 72,
+  "Alchemist": 73,
+  "Invoker": 74,
+  "Silencer": 75,
+  "Outworld Destroyer": 76,
+  "Lycan": 77,
+  "Brewmaster": 78,
+  "Shadow Demon": 79,
+  "Lone Druid": 80,
+  "Chaos Knight": 81,
+  "Meepo": 82,
+  "Treant Protector": 83,
+  "Ogre Magi": 84,
+  "Undying": 85,
+  "Rubick": 86,
+  "Disruptor": 87,
+  "Nyx Assassin": 88,
+  "Naga Siren": 89,
+  "Keeper of the Light": 90,
+  "Io": 91,
+  "Visage": 92,
+  "Slark": 93,
+  "Medusa": 94,
+  "Troll Warlord": 95,
+  "Centaur Warrunner": 96,
+  "Magnus": 97,
+  "Timbersaw": 98,
+  "Bristleback": 99,
+  "Tusk": 100,
+  "Skywrath Mage": 101,
+  "Abaddon": 102,
+  "Elder Titan": 103,
+  "Legion Commander": 104,
+  "Techies": 105,
+  "Ember Spirit": 106,
+  "Earth Spirit": 107,
+  "Underlord": 108,
+  "Terrorblade": 109,
+  "Phoenix": 110,
+  "Oracle": 111,
+  "Winter Wyvern": 112,
+  "Arc Warden": 113,
+  "Monkey King": 114,
+  "Dark Willow": 119,
+  "Pangolier": 120,
+  "Grimstroke": 121,
+  "Hoodwink": 123,
+  "Void Spirit": 126,
+  "Snapfire": 128,
+  "Mars": 129,
+  "Ringmaster": 131,
+  "Dawnbreaker": 135,
+  "Marci": 136,
+  "Primal Beast": 137,
+  "Muerta": 138,
+  "Kez": 145
 };
 
-// 反向映射（OpenDota ID -> 中文名）
+// 中文名称映射（可以自定义）
+export const chineseNameMapping = {
+  "Anti-Mage": "敌法师",
+  "Axe": "斧王",
+  "Crystal Maiden": "水晶室女",
+  "Shadow Fiend": "影魔",
+  "Phantom Lancer": "幻影长矛手",
+  "Pudge": "帕吉",
+  "Razor": "剃刀",
+  "Storm Spirit": "风暴之灵",
+  "Vengeful Spirit": "复仇之魂",
+  "Windranger": "风行者",
+  "Zeus": "宙斯",
+  "Kunkka": "昆卡",
+  "Lina": "莉娜",
+  "Lion": "莱恩",
+  "Shadow Shaman": "暗影萨满",
+  "Tidehunter": "潮汐猎人",
+  "Witch Doctor": "巫医",
+  "Lich": "巫妖",
+  "Riki": "力丸",
+  "Enigma": "谜团",
+  "Tinker": "修补匠",
+  "Sniper": "狙击手",
+  "Necrophos": "瘟疫法师",
+  "Warlock": "术士",
+  "Beastmaster": "兽王",
+  "Queen of Pain": "痛苦女王",
+  "Death Prophet": "死亡先知",
+  "Phantom Assassin": "幻影刺客",
+  "Templar Assassin": "圣堂刺客",
+  "Dragon Knight": "龙骑士",
+  "Dazzle": "戴泽",
+  "Nature's Prophet": "先知",
+  "Lifestealer": "噬魂鬼",
+  "Dark Seer": "黑暗贤者",
+  "Invoker": "祈求者",
+  "Spirit Breaker": "裂魂人",
+  "Alchemist": "炼金术士",
+  "Lycan": "狼人",
+  "Brewmaster": "酒仙",
+  "Chaos Knight": "混沌骑士",
+  "Treant Protector": "树精卫士",
+  "Legion Commander": "军团指挥官",
+  "Techies": "工程师",
+  "Ember Spirit": "灰烬之灵",
+  "Earth Spirit": "大地之灵",
+  "Phoenix": "凤凰",
+  "Oracle": "神谕者",
+  "Monkey King": "齐天大圣",
+  "Pangolier": "石鳞剑士",
+  "Mars": "玛尔斯",
+  "Void Spirit": "虚无之灵",
+  "Snapfire": "电炎绝手",
+  "Dawnbreaker": "破晓辰星",
+  "Marci": "玛西",
+  "Primal Beast": "獸"
+};
+
+// 创建中文名到ID的映射
+export const chineseToId = Object.entries(heroMapping).reduce((acc, [englishName, id]) => {
+  const chineseName = chineseNameMapping[englishName];
+  if (chineseName) {
+    acc[chineseName] = id;
+  }
+  return acc;
+}, {});
+
+// 合并英文和中文映射
+export const allHeroMapping = { ...heroMapping, ...chineseToId };
+
 export const reverseHeroMapping = Object.entries(heroMapping).reduce((acc, [name, id]) => {
   acc[id] = name;
   return acc;
 }, {});
 
-// 获取所有OpenDota英雄ID列表
 export const getAllHeroIds = () => Object.values(heroMapping);
 
-// 根据中文名获取OpenDota ID
-export const getHeroId = (chineseName) => heroMapping[chineseName];
+// 支持中英文名称查询
+export const getHeroId = (name) => allHeroMapping[name] || heroMapping[name];
 
-// 根据OpenDota ID获取中文名
+// 根据ID获取英文名
 export const getHeroName = (heroId) => reverseHeroMapping[heroId];
+
+// 根据ID获取中文名
+export const getHeroChineseName = (heroId) => {
+  const englishName = reverseHeroMapping[heroId];
+  return chineseNameMapping[englishName] || englishName;
+};

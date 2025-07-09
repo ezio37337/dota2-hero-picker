@@ -1,7 +1,7 @@
 // 数据处理服务 - 整合API数据和缓存管理
 import * as api from './opendotaApi';
 import * as storage from '../utils/storage';
-import { reverseHeroMapping } from '../data/heroMapping';
+import { reverseHeroMapping, getHeroChineseName, chineseNameMapping } from '../data/heroMapping';
 
 // 初始化静态数据（英雄胜率和克制关系）
 export const initializeStaticData = async () => {
@@ -97,13 +97,25 @@ export const processHeroData = (heroStats, counterMatrix) => {
   const processedData = {};
   
   heroStats.forEach(hero => {
-    const chineseName = reverseHeroMapping[hero.id];
-    if (chineseName) {
-      processedData[chineseName] = {
-        id: hero.id,
-        winRate: hero.winRate,
-        counters: counterMatrix[hero.id] || {}
-      };
+    // 获取英雄的中文名（如果有的话）
+    const chineseName = getHeroChineseName(hero.id);
+    const englishName = reverseHeroMapping[hero.id];
+    
+    // 同时为英文名和中文名创建映射
+    const heroData = {
+      id: hero.id,
+      winRate: hero.winRate,
+      counters: counterMatrix[hero.id] || {}
+    };
+    
+    // 英文名映射
+    if (englishName) {
+      processedData[englishName] = heroData;
+    }
+    
+    // 中文名映射
+    if (chineseName && chineseName !== englishName) {
+      processedData[chineseName] = heroData;
     }
   });
   

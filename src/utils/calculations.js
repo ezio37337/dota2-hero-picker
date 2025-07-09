@@ -31,12 +31,20 @@ const calculateCounterScore = (heroName, enemyHeroes, processedData) => {
   if (enemyHeroes.length === 0) return 50;
   
   let totalCounterRate = 0;
+  let validCounters = 0;
+  
   enemyHeroes.forEach(enemy => {
     const counterRate = getCounterRate(heroName, enemy.name, processedData);
-    totalCounterRate += counterRate;
+    if (counterRate !== 0.5) { // 只计算有效的克制数据
+      totalCounterRate += counterRate;
+      validCounters++;
+    }
   });
   
-  return (totalCounterRate / enemyHeroes.length) * 100;
+  // 如果没有有效的克制数据，返回基础分数
+  if (validCounters === 0) return 50;
+  
+  return (totalCounterRate / validCounters) * 100;
 };
 
 // 计算配合关系得分（0-100）
@@ -77,13 +85,18 @@ export const calculateHeroScore = (
   const versionScore = calculateVersionWinRateScore(heroName, processedData);
   const counterScore = calculateCounterScore(heroName, enemyHeroes, processedData);
   
+  // 添加调试信息
+  console.log(`英雄: ${heroName}, 版本胜率分: ${versionScore.toFixed(2)}, 克制分: ${counterScore.toFixed(2)}`);
+  
   if (!hasPlayer) {
     // 无特定玩家时的计算
     const weights = WEIGHTS.WITHOUT_PLAYER;
+    const totalScore = weights.versionWinRate * versionScore + 
+                      weights.counterRelation * counterScore;
+                      
     return {
       heroName,
-      totalScore: weights.versionWinRate * versionScore + 
-                  weights.counterRelation * counterScore,
+      totalScore,
       breakdown: {
         versionScore,
         counterScore
@@ -96,13 +109,17 @@ export const calculateHeroScore = (
   const synergyScore = calculateSynergyScore(heroName, allyHeroes, playerData, processedData);
   const proficiencyScore = calculateProficiencyScore(heroName, normalizedProficiency, processedData);
   
+  console.log(`  配合分: ${synergyScore.toFixed(2)}, 熟练度分: ${proficiencyScore.toFixed(2)}`);
+  
   const weights = WEIGHTS.WITH_PLAYER;
+  const totalScore = weights.versionWinRate * versionScore + 
+                    weights.counterRelation * counterScore +
+                    weights.synergyRelation * synergyScore +
+                    weights.playerProficiency * proficiencyScore;
+                    
   return {
     heroName,
-    totalScore: weights.versionWinRate * versionScore + 
-                weights.counterRelation * counterScore +
-                weights.synergyRelation * synergyScore +
-                weights.playerProficiency * proficiencyScore,
+    totalScore,
     breakdown: {
       versionScore,
       counterScore,

@@ -1,39 +1,77 @@
-import React, { useState, useEffect,useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Brain, Zap, Dumbbell, Star, X, ChevronLeft, Users, UserX, Loader2, RefreshCw } from 'lucide-react';
 import { initializeStaticData, fetchPlayerData, processHeroData } from './services/dataProcessor';
 import { getHeroRecommendations, calculateTeamWinRate } from './utils/calculations';
 import { savePlayerProfiles, loadPlayerProfiles } from './utils/storage';
 
-// 英雄数据 - 保持原有的20个英雄
-const heroesData = [
-  // 智力英雄
-  { id: 1, name: '水晶室女', type: '智力英雄' },
-  { id: 2, name: '谜团', type: '智力英雄' },
-  { id: 3, name: '祈求者', type: '智力英雄' },
-  { id: 4, name: '死亡先知', type: '智力英雄' },
-  { id: 5, name: '巫医', type: '智力英雄' },
-  
-  // 敏捷英雄
-  { id: 6, name: '幻影刺客', type: '敏捷英雄' },
-  { id: 7, name: '敌法师', type: '敏捷英雄' },
-  { id: 8, name: '影魔', type: '敏捷英雄' },
-  { id: 9, name: '复仇之魂', type: '敏捷英雄' },
-  { id: 10, name: '圣堂刺客', type: '敏捷英雄' },
-  
-  // 力量英雄
-  { id: 11, name: '龙骑士', type: '力量英雄' },
-  { id: 12, name: '斧王', type: '力量英雄' },
-  { id: 13, name: '裂魂人', type: '力量英雄' },
-  { id: 14, name: '军团指挥官', type: '力量英雄' },
-  { id: 15, name: '潮汐猎人', type: '力量英雄' },
-  
-  // 全才英雄
-  { id: 16, name: '痛苦女王', type: '全才英雄' },
-  { id: 17, name: '巫妖', type: '全才英雄' },
-  { id: 18, name: '炸弹人', type: '全才英雄' },
-  { id: 19, name: '暗牧', type: '全才英雄' },
-  { id: 20, name: '风行者', type: '全才英雄' }
-];
+// 导入英雄数据
+import { heroesData as generatedHeroesData } from './data/heroesData.generated';
+
+// 自定义英雄名称映射（英文名 -> 中文名）
+const customHeroNames = {
+  "Anti-Mage": "敌法师",
+  "Axe": "斧王",
+  "Crystal Maiden": "水晶室女",
+  "Shadow Fiend": "影魔",
+  "Phantom Lancer": "幻影长矛手",
+  "Pudge": "帕吉",
+  "Razor": "剃刀",
+  "Storm Spirit": "风暴之灵",
+  "Vengeful Spirit": "复仇之魂",
+  "Windranger": "风行者",
+  "Zeus": "宙斯",
+  "Kunkka": "昆卡",
+  "Lina": "莉娜",
+  "Lion": "莱恩",
+  "Shadow Shaman": "暗影萨满",
+  "Tidehunter": "潮汐猎人",
+  "Witch Doctor": "巫医",
+  "Lich": "巫妖",
+  "Riki": "力丸",
+  "Enigma": "谜团",
+  "Tinker": "修补匠",
+  "Sniper": "狙击手",
+  "Necrophos": "瘟疫法师",
+  "Warlock": "术士",
+  "Beastmaster": "兽王",
+  "Queen of Pain": "痛苦女王",
+  "Death Prophet": "死亡先知",
+  "Phantom Assassin": "幻影刺客",
+  "Templar Assassin": "圣堂刺客",
+  "Dragon Knight": "龙骑士",
+  "Dazzle": "戴泽",
+  "Nature's Prophet": "先知",
+  "Lifestealer": "噬魂鬼",
+  "Dark Seer": "黑暗贤者",
+  "Invoker": "祈求者",
+  "Spirit Breaker": "裂魂人",
+  "Alchemist": "炼金术士",
+  "Lycan": "狼人",
+  "Brewmaster": "酒仙",
+  "Chaos Knight": "混沌骑士",
+  "Treant Protector": "树精卫士",
+  "Legion Commander": "军团指挥官",
+  "Techies": "工程师",
+  "Ember Spirit": "灰烬之灵",
+  "Earth Spirit": "大地之灵",
+  "Phoenix": "凤凰",
+  "Oracle": "神谕者",
+  "Monkey King": "齐天大圣",
+  "Pangolier": "石鳞剑士",
+  "Mars": "玛尔斯",
+  "Void Spirit": "虚无之灵",
+  "Snapfire": "电炎绝手",
+  "Dawnbreaker": "破晓辰星",
+  "Marci": "玛西",
+  "Primal Beast": "獸",
+  // 可以继续添加更多自定义名称
+};
+
+// 处理英雄数据，应用自定义名称
+const heroesData = generatedHeroesData.map(hero => ({
+  ...hero,
+  name: customHeroNames[hero.name] || hero.name // 如果有自定义名称则使用，否则使用原名
+}));
 
 const HERO_TYPES = {
   '智力英雄': { icon: Brain, color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-500' },
@@ -56,10 +94,29 @@ function Dota2HeroPicker() {
   
   // 新增：玩家选择相关状态
   const [currentPlayer, setCurrentPlayer] = useState(null); // null 表示"无特定玩家"
-  const [playerProfiles, setPlayerProfiles] = useState(loadPlayerProfiles());
+  
+  // 强制使用新的玩家配置
+  const defaultPlayerProfiles = {
+    kai: { steamId: '139582452', name: '恺' },
+    wangning: { steamId: '139877687', name: '王宁' },
+    body: { steamId: '136680163', name: 'Body' }
+  };
+  
+  const [playerProfiles, setPlayerProfiles] = useState(() => {
+    // 检查是否需要更新配置
+    const savedProfiles = loadPlayerProfiles();
+    // 如果还是旧的配置（包含playerA等），则使用新配置
+    if (savedProfiles.playerA || savedProfiles.playerB || savedProfiles.playerC) {
+      savePlayerProfiles(defaultPlayerProfiles);
+      return defaultPlayerProfiles;
+    }
+    return savedProfiles;
+  });
+  
   const [showPlayerSettings, setShowPlayerSettings] = useState(false);
   
-  // 新增：数据加载状态
+  // 新增：搜索功能
+  const [heroSearch, setHeroSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState('正在初始化...');
   const [processedData, setProcessedData] = useState(null);
@@ -89,7 +146,7 @@ function Dota2HeroPicker() {
   }, []);
 
   // 加载玩家数据
-  const loadPlayerDataForProfile = useCallback(async (playerId) => {
+  const loadPlayerDataForProfile = async (playerId) => {
     if (!playerProfiles[playerId]?.steamId) {
       return;
     }
@@ -107,14 +164,14 @@ function Dota2HeroPicker() {
     } catch (err) {
       console.error(`加载玩家${playerId}数据失败:`, err);
     }
-  }, [playerProfiles]);
+  };
 
   // 切换玩家时加载数据
   useEffect(() => {
     if (currentPlayer && !playerData[currentPlayer]) {
       loadPlayerDataForProfile(currentPlayer);
-   }
-  }, [currentPlayer, playerData, loadPlayerDataForProfile]);
+    }
+  }, [currentPlayer]);
 
   // 更新推荐和胜率
   useEffect(() => {
@@ -196,6 +253,7 @@ function Dota2HeroPicker() {
   const selectHeroType = (type) => {
     setSelectedType(type);
     setModalStep('hero');
+    setHeroSearch(''); // 清空搜索
   };
 
   const selectHero = (hero) => {
@@ -441,6 +499,17 @@ function Dota2HeroPicker() {
           >
             重置选择
           </button>
+          <button
+            onClick={() => {
+              if (window.confirm('确定要清除所有缓存数据吗？这将重新加载所有数据。')) {
+                localStorage.clear();
+                window.location.reload();
+              }
+            }}
+            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+          >
+            清除缓存
+          </button>
         </div>
 
         {/* 已选英雄区域 - 保持原有代码 */}
@@ -532,12 +601,38 @@ function Dota2HeroPicker() {
               推荐英雄 (为我方选择)
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {recommendations.map(hero => (
-                <HeroCard 
-                  key={hero.id} 
-                  hero={hero} 
-                  showScore={true}
-                />
+              {recommendations.map((hero, index) => (
+                <div key={hero.id} className="bg-white rounded-lg p-4 border-2 border-green-200">
+                  <HeroCard 
+                    hero={hero} 
+                    showScore={true}
+                  />
+                  {/* 显示得分详情 */}
+                  {hero.breakdown && (
+                    <div className="mt-3 text-xs space-y-1">
+                      <div className="flex justify-between">
+                        <span>版本胜率:</span>
+                        <span className="font-semibold">{hero.breakdown.versionScore.toFixed(1)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>克制关系:</span>
+                        <span className="font-semibold">{hero.breakdown.counterScore.toFixed(1)}</span>
+                      </div>
+                      {currentPlayer && hero.breakdown.synergyScore !== undefined && (
+                        <>
+                          <div className="flex justify-between">
+                            <span>配合关系:</span>
+                            <span className="font-semibold">{hero.breakdown.synergyScore.toFixed(1)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>个人熟练:</span>
+                            <span className="font-semibold">{hero.breakdown.proficiencyScore.toFixed(1)}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
             <div className="text-sm text-gray-600 mt-3">
@@ -614,14 +709,33 @@ function Dota2HeroPicker() {
                   </div>
                 ) : (
                   // 英雄选择
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {getAvailableHeroesByType(selectedType).map(hero => (
-                      <HeroCard 
-                        key={hero.id} 
-                        hero={hero} 
-                        onClick={selectHero}
+                  <div>
+                    {/* 搜索框 */}
+                    <div className="mb-4">
+                      <input
+                        type="text"
+                        placeholder="搜索英雄..."
+                        value={heroSearch}
+                        onChange={(e) => setHeroSearch(e.target.value)}
+                        className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
                       />
-                    ))}
+                    </div>
+                    
+                    {/* 英雄列表 */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-h-96 overflow-y-auto">
+                      {getAvailableHeroesByType(selectedType)
+                        .filter(hero => 
+                          hero.name.toLowerCase().includes(heroSearch.toLowerCase())
+                        )
+                        .map(hero => (
+                          <HeroCard 
+                            key={hero.id} 
+                            hero={hero} 
+                            onClick={selectHero}
+                          />
+                        ))
+                      }
+                    </div>
                   </div>
                 )}
               </div>

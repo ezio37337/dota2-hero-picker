@@ -95,9 +95,9 @@ export const savePlayerProfiles = (profiles) => {
 // 读取玩家配置
 export const loadPlayerProfiles = () => {
   return loadFromStorage(STORAGE_KEYS.PLAYER_PROFILES) || {
-    playerA: { steamId: '', name: '玩家A' },
-    playerB: { steamId: '', name: '玩家B' },
-    playerC: { steamId: '', name: '玩家C' }
+    kai: { steamId: '139582452', name: '恺' },
+    wangning: { steamId: '139877687', name: '王宁' },
+    body: { steamId: '136680163', name: 'Body' }
   };
 };
 
