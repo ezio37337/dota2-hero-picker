@@ -171,7 +171,7 @@ function Dota2HeroPicker() {
     if (currentPlayer && !playerData[currentPlayer]) {
       loadPlayerDataForProfile(currentPlayer);
     }
-  }, [currentPlayer]);
+  }, [currentPlayer, playerData, loadPlayerDataForProfile]);
 
   // 更新推荐和胜率
   useEffect(() => {
