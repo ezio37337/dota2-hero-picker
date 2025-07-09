@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useCallback } from 'react';
 import { Brain, Zap, Dumbbell, Star, X, ChevronLeft, Users, UserX, Loader2, RefreshCw } from 'lucide-react';
 import { initializeStaticData, fetchPlayerData, processHeroData } from './services/dataProcessor';
 import { getHeroRecommendations, calculateTeamWinRate } from './utils/calculations';
@@ -89,7 +89,7 @@ function Dota2HeroPicker() {
   }, []);
 
   // 加载玩家数据
-  const loadPlayerDataForProfile = async (playerId) => {
+  const loadPlayerDataForProfile = useCallback(async (playerId) => {
     if (!playerProfiles[playerId]?.steamId) {
       return;
     }
@@ -107,14 +107,14 @@ function Dota2HeroPicker() {
     } catch (err) {
       console.error(`加载玩家${playerId}数据失败:`, err);
     }
-  };
+  }, [playerProfiles]);
 
   // 切换玩家时加载数据
   useEffect(() => {
     if (currentPlayer && !playerData[currentPlayer]) {
       loadPlayerDataForProfile(currentPlayer);
-    }
-  }, [currentPlayer]);
+   }
+  }, [currentPlayer, playerData, loadPlayerDataForProfile]);
 
   // 更新推荐和胜率
   useEffect(() => {
