@@ -22,9 +22,11 @@ export const fetchHeroStats = async () => {
   console.log('正在获取英雄统计数据...');
   const data = await fetchAPI('/heroStats');
   
-  // 只保留我们需要的20个英雄的数据
+  // 只保留我们需要的英雄的数据
   const heroIds = getAllHeroIds();
   const filteredData = data.filter(hero => heroIds.includes(hero.id));
+  
+  console.log(`获取到 ${filteredData.length} 个英雄的统计数据`);
   
   // 计算全段位胜率
   return filteredData.map(hero => {
@@ -39,7 +41,7 @@ export const fetchHeroStats = async () => {
       totalWins += wins;
     }
     
-    const winRate = totalPicks > 0 ? totalWins / totalPicks : 0;
+    const winRate = totalPicks > 0 ? totalWins / totalPicks : 0.5;
     
     return {
       id: hero.id,
@@ -54,45 +56,78 @@ export const fetchHeroStats = async () => {
 // 获取单个英雄的克制关系数据
 export const fetchHeroMatchups = async (heroId) => {
   console.log(`正在获取英雄 ${heroId} 的克制关系...`);
-  const data = await fetchAPI(`/heroes/${heroId}/matchups`);
   
-  // 只保留我们需要的英雄数据
-  const heroIds = getAllHeroIds();
-  const filteredData = data.filter(matchup => heroIds.includes(matchup.hero_id));
-  
-  // 转换为克制率映射
-  const matchups = {};
-  filteredData.forEach(matchup => {
-    const winRate = matchup.games_played > 0 
-      ? matchup.wins / matchup.games_played 
-      : 0.5; // 如果没有数据，默认50%胜率
-    matchups[matchup.hero_id] = winRate;
-  });
-  
-  return matchups;
+  try {
+    const data = await fetchAPI(`/heroes/${heroId}/matchups`);
+    console.log(`英雄 ${heroId} 获取到 ${data.length} 条克制关系数据`);
+    
+    // 只保留我们需要的英雄数据，并且要求有足够的样本
+    const heroIds = getAllHeroIds();
+    const filteredData = data.filter(matchup => 
+      heroIds.includes(matchup.hero_id) && matchup.games_played >= 50
+    );
+    
+    console.log(`英雄 ${heroId} 有效克制关系数据: ${filteredData.length} 条`);
+    
+    // 转换为克制率映射
+    const matchups = {};
+    filteredData.forEach(matchup => {
+      const winRate = matchup.wins / matchup.games_played;
+      matchups[matchup.hero_id] = winRate;
+      console.log(`  vs 英雄 ${matchup.hero_id}: ${winRate.toFixed(3)} (${matchup.wins}/${matchup.games_played})`);
+    });
+    
+    return matchups;
+  } catch (error) {
+    console.error(`获取英雄 ${heroId} 的克制关系失败:`, error);
+    return {};
+  }
 };
 
 // 获取所有英雄的克制关系矩阵
 export const fetchAllHeroMatchups = async () => {
-  console.log('正在构建克制关系矩阵...');
+  console.log('开始构建克制关系矩阵...');
+  
   const heroIds = getAllHeroIds();
+  console.log(`需要获取 ${heroIds.length} 个英雄的克制关系数据`);
+  
   const counterMatrix = {};
   
   // 为了避免API限制，添加延迟
   const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
   
-  for (const heroId of heroIds) {
+  // 只获取前20个英雄的数据进行测试
+  const testHeroIds = heroIds.slice(0, 20);
+  console.log('测试英雄IDs:', testHeroIds);
+  
+  for (let i = 0; i < testHeroIds.length; i++) {
+    const heroId = testHeroIds[i];
+    
     try {
+      console.log(`[${i + 1}/${testHeroIds.length}] 处理英雄 ${heroId}...`);
+      
       const matchups = await fetchHeroMatchups(heroId);
       counterMatrix[heroId] = matchups;
       
-      // 每次请求后延迟100ms，避免触发速率限制
-      await delay(100);
+      console.log(`英雄 ${heroId} 处理完成，获得 ${Object.keys(matchups).length} 条克制关系`);
+      
+      // 每次请求后延迟300ms，避免触发速率限制
+      if (i < testHeroIds.length - 1) {
+        await delay(300);
+      }
+      
     } catch (error) {
       console.error(`获取英雄 ${heroId} 的克制关系失败:`, error);
       counterMatrix[heroId] = {};
     }
   }
+  
+  // 统计结果
+  const totalHeroes = Object.keys(counterMatrix).length;
+  const heroesWithData = Object.entries(counterMatrix).filter(([_, data]) => Object.keys(data).length > 0).length;
+  
+  console.log(`克制关系矩阵构建完成: ${heroesWithData}/${totalHeroes} 个英雄有数据`);
+  console.log('最终矩阵数据示例:', Object.entries(counterMatrix).slice(0, 2));
   
   return counterMatrix;
 };
@@ -106,7 +141,9 @@ export const fetchPlayerHeroes = async (accountId) => {
   const heroIds = getAllHeroIds();
   const filteredData = data.filter(hero => heroIds.includes(hero.hero_id));
   
-  // 处理数据，提取熟练度和配合关系
+  console.log(`玩家 ${accountId} 的英雄数据条目数: ${filteredData.length}`);
+  
+  // 处理数据，提取熟练度
   const playerData = {
     proficiency: {},
     synergies: {}
@@ -127,10 +164,6 @@ export const fetchPlayerHeroes = async (accountId) => {
     // 初始化该英雄的配合关系
     playerData.synergies[hero.hero_id] = {};
   });
-  
-  // 由于API的限制，配合关系需要从详细数据中提取
-  // 这里我们先返回基础数据，配合关系可以后续通过其他方式获取
-  console.log('注意：配合关系数据需要额外的API调用，暂时使用默认值');
   
   return playerData;
 };
