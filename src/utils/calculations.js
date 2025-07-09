@@ -35,22 +35,48 @@ const calculateCounterScore = (heroName, enemyHeroes, processedData) => {
   
   enemyHeroes.forEach(enemy => {
     const counterRate = getCounterRate(heroName, enemy.name, processedData);
-    if (counterRate !== 0.5) { // 只计算有效的克制数据
-      totalCounterRate += counterRate;
-      validCounters++;
-    }
+    console.log(`${heroName} vs ${enemy.name}: ${counterRate}`);
+    
+    // 只要有返回值就计算，即使是0.5也是有效数据
+    totalCounterRate += counterRate;
+    validCounters++;
   });
   
-  // 如果没有有效的克制数据，返回基础分数
-  if (validCounters === 0) return 50;
-  
-  return (totalCounterRate / validCounters) * 100;
+  // 计算平均克制率
+  const avgCounterRate = validCounters > 0 ? totalCounterRate / validCounters : 0.5;
+  return avgCounterRate * 100;
 };
 
 // 计算配合关系得分（0-100）
 const calculateSynergyScore = (heroName, allyHeroes, playerData, processedData) => {
   if (allyHeroes.length === 0) return 50;
   
+  // 如果没有玩家数据，使用默认的配合关系计算
+  if (!playerData) {
+    // 基于英雄类型的简单配合关系
+    const heroData = processedData[heroName];
+    if (!heroData) return 50;
+    
+    let synergyScore = 50;
+    allyHeroes.forEach(ally => {
+      const allyData = processedData[ally.name];
+      if (allyData) {
+        // 简单的配合关系：相同类型的英雄配合度略高
+        const heroType = getHeroTypeFromData(heroName, processedData);
+        const allyType = getHeroTypeFromData(ally.name, processedData);
+        
+        if (heroType === allyType) {
+          synergyScore += 2; // 同类型英雄配合度+2
+        } else {
+          synergyScore += 1; // 不同类型英雄配合度+1
+        }
+      }
+    });
+    
+    return Math.min(100, synergyScore);
+  }
+  
+  // 如果有玩家数据，使用更复杂的配合关系计算
   let totalSynergyRate = 0;
   allyHeroes.forEach(ally => {
     const synergyRate = getSynergyRate(heroName, ally.name, playerData, processedData);
@@ -58,6 +84,18 @@ const calculateSynergyScore = (heroName, allyHeroes, playerData, processedData) 
   });
   
   return (totalSynergyRate / allyHeroes.length) * 100;
+};
+
+// 获取英雄类型的辅助函数
+const getHeroTypeFromData = (heroName, processedData) => {
+  // 从英雄数据中获取类型信息
+  const heroData = processedData[heroName];
+  if (heroData && heroData.type) {
+    return heroData.type;
+  }
+  
+  // 如果没有类型信息，返回默认值
+  return 'unknown';
 };
 
 // 计算玩家熟练度得分（0-100）
@@ -153,8 +191,8 @@ export const getHeroRecommendations = (
   // 按分数降序排序
   heroScores.sort((a, b) => b.totalScore - a.totalScore);
   
-  // 返回前3个推荐
-  return heroScores.slice(0, 3).map(score => ({
+  // 返回前5个推荐
+  return heroScores.slice(0, 5).map(score => ({
     ...availableHeroes.find(h => h.name === score.heroName),
     score: Math.round(score.totalScore),
     breakdown: score.breakdown

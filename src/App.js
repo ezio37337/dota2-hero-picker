@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Brain, Zap, Dumbbell, Star, X, ChevronLeft, Users, UserX, Loader2, RefreshCw } from 'lucide-react';
 import { initializeStaticData, fetchPlayerData, processHeroData } from './services/dataProcessor';
 import { getHeroRecommendations, calculateTeamWinRate } from './utils/calculations';
@@ -123,6 +123,27 @@ function Dota2HeroPicker() {
   const [playerData, setPlayerData] = useState({});
   const [error, setError] = useState(null);
 
+  // 使用useCallback来稳定函数引用
+  const loadPlayerDataForProfile = useCallback(async (playerId) => {
+    if (!playerProfiles[playerId]?.steamId) {
+      return;
+    }
+    
+    try {
+      setLoadingMessage(`正在加载${playerProfiles[playerId].name}的数据...`);
+      const data = await fetchPlayerData(playerId, playerProfiles[playerId].steamId);
+      
+      if (data) {
+        setPlayerData(prev => ({
+          ...prev,
+          [playerId]: data
+        }));
+      }
+    } catch (err) {
+      console.error(`加载玩家${playerId}数据失败:`, err);
+    }
+  }, [playerProfiles]);
+
   // 初始化静态数据
   useEffect(() => {
     const loadStaticData = async () => {
@@ -145,33 +166,12 @@ function Dota2HeroPicker() {
     loadStaticData();
   }, []);
 
-  // 加载玩家数据
-  const loadPlayerDataForProfile = async (playerId) => {
-    if (!playerProfiles[playerId]?.steamId) {
-      return;
-    }
-    
-    try {
-      setLoadingMessage(`正在加载${playerProfiles[playerId].name}的数据...`);
-      const data = await fetchPlayerData(playerId, playerProfiles[playerId].steamId);
-      
-      if (data) {
-        setPlayerData(prev => ({
-          ...prev,
-          [playerId]: data
-        }));
-      }
-    } catch (err) {
-      console.error(`加载玩家${playerId}数据失败:`, err);
-    }
-  };
-
   // 切换玩家时加载数据
   useEffect(() => {
     if (currentPlayer && !playerData[currentPlayer]) {
       loadPlayerDataForProfile(currentPlayer);
     }
-  }, [currentPlayer]);
+  }, [currentPlayer, playerData, loadPlayerDataForProfile]);
 
   // 更新推荐和胜率
   useEffect(() => {
@@ -240,6 +240,22 @@ function Dota2HeroPicker() {
     
     // 重新加载
     await loadPlayerDataForProfile(playerId);
+  };
+
+  // 添加推荐英雄到我方阵容
+  const addRecommendedHero = (hero) => {
+    // 找到第一个空位
+    const emptySlotIndex = allyHeroes.findIndex(h => h === undefined);
+    const nextIndex = emptySlotIndex !== -1 ? emptySlotIndex : allyHeroes.length;
+    
+    // 如果阵容已满，则不添加
+    if (nextIndex >= 5) {
+      return;
+    }
+    
+    const newAllies = [...allyHeroes];
+    newAllies[nextIndex] = hero;
+    setAllyHeroes(newAllies);
   };
 
   // 其他原有函数保持不变...
@@ -318,7 +334,7 @@ function Dota2HeroPicker() {
   };
 
   // 英雄卡片组件
-  const HeroCard = ({ hero, showScore = false, onClick, onRemove, slotIndex, team, isEmptySlot = false }) => {
+  const HeroCard = ({ hero, showScore = false, onClick, onRemove, slotIndex, team, isEmptySlot = false, isRecommendation = false }) => {
     if (isEmptySlot) {
       return (
         <div 
@@ -339,7 +355,9 @@ function Dota2HeroPicker() {
     const TypeIcon = HERO_TYPES[hero.type].icon;
     
     return (
-      <div className="relative p-3 rounded-lg border-2 border-gray-200 bg-white transition-all duration-200">
+      <div className={`relative p-3 rounded-lg border-2 bg-white transition-all duration-200 ${
+        isRecommendation ? 'border-green-300 hover:border-green-400 cursor-pointer hover:bg-green-50' : 'border-gray-200'
+      }`}>
         {onRemove && (
           <button
             onClick={() => onRemove(slotIndex, team)}
@@ -350,8 +368,14 @@ function Dota2HeroPicker() {
         )}
         
         <div 
-          className="cursor-pointer"
-          onClick={() => onClick && onClick(hero)}
+          className={isRecommendation ? "cursor-pointer" : ""}
+          onClick={() => {
+            if (isRecommendation) {
+              addRecommendedHero(hero);
+            } else if (onClick) {
+              onClick(hero);
+            }
+          }}
         >
           <div className="flex items-center gap-2 mb-2">
             <TypeIcon className={`w-4 h-4 ${HERO_TYPES[hero.type].color}`} />
@@ -365,6 +389,12 @@ function Dota2HeroPicker() {
           {showScore && (
             <div className="mt-2 text-xs font-bold text-purple-600">
               推荐分数: {hero.score}
+            </div>
+          )}
+          
+          {isRecommendation && (
+            <div className="mt-2 text-xs text-green-600 font-medium">
+              点击加入我方
             </div>
           )}
         </div>
@@ -512,7 +542,7 @@ function Dota2HeroPicker() {
           </button>
         </div>
 
-        {/* 已选英雄区域 - 保持原有代码 */}
+        {/* 已选英雄区域 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* 我方英雄 */}
           <div className="bg-blue-50 p-4 rounded-lg">
@@ -577,12 +607,12 @@ function Dota2HeroPicker() {
             <h3 className="text-xl font-bold mb-2 text-center">预测胜率</h3>
             <div className="flex justify-between items-center">
               <div className="text-center">
-                <div className="text-2xl font-bold">{winRate.ally}%</div>
+                <div className="text-2xl font-bold">{winRate.ally.toFixed(1)}%</div>
                 <div>我方胜率</div>
               </div>
               <div className="text-center text-xl font-bold">VS</div>
               <div className="text-center">
-                <div className="text-2xl font-bold">{winRate.enemy}%</div>
+                <div className="text-2xl font-bold">{winRate.enemy.toFixed(1)}%</div>
                 <div>敌方胜率</div>
               </div>
             </div>
@@ -600,12 +630,13 @@ function Dota2HeroPicker() {
             <h3 className="text-xl font-bold mb-4 text-green-800">
               推荐英雄 (为我方选择)
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               {recommendations.map((hero, index) => (
                 <div key={hero.id} className="bg-white rounded-lg p-4 border-2 border-green-200">
                   <HeroCard 
                     hero={hero} 
                     showScore={true}
+                    isRecommendation={true}
                   />
                   {/* 显示得分详情 */}
                   {hero.breakdown && (
@@ -645,7 +676,7 @@ function Dota2HeroPicker() {
           </div>
         )}
 
-        {/* 选择英雄模态框 - 保持原有代码 */}
+        {/* 选择英雄模态框 */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
@@ -742,18 +773,6 @@ function Dota2HeroPicker() {
             </div>
           </div>
         )}
-
-        {/* 说明 */}
-        <div className="mt-6 text-sm text-gray-600 bg-gray-100 p-4 rounded-lg">
-          <h4 className="font-bold mb-2">v2.0版本更新说明：</h4>
-          <ul className="list-disc list-inside space-y-1">
-            <li>集成OpenDota真实数据，包含英雄胜率和克制关系</li>
-            <li>支持玩家个性化推荐，输入Steam ID获取熟练度数据</li>
-            <li>动态权重调整：有玩家数据时考虑配合和熟练度，无玩家时仅基于胜率和克制</li>
-            <li>数据自动缓存，减少API调用次数</li>
-            <li>支持多玩家配置快速切换</li>
-          </ul>
-        </div>
       </div>
     </div>
   );

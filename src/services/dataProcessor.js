@@ -1,7 +1,7 @@
 // 数据处理服务 - 整合API数据和缓存管理
 import * as api from './opendotaApi';
 import * as storage from '../utils/storage';
-import { reverseHeroMapping, getHeroChineseName, chineseNameMapping } from '../data/heroMapping';
+import { reverseHeroMapping, getHeroChineseName } from '../data/heroMapping';
 
 // 初始化静态数据（英雄胜率和克制关系）
 export const initializeStaticData = async () => {
@@ -119,24 +119,41 @@ export const processHeroData = (heroStats, counterMatrix) => {
     }
   });
   
+  console.log('处理后的英雄数据样本:', Object.keys(processedData).slice(0, 5));
+  console.log('示例克制数据:', processedData['Anti-Mage'] || processedData['敌法师']);
+  
   return processedData;
 };
 
 // 获取英雄的版本胜率
 export const getHeroWinRate = (heroName, processedData) => {
   const heroData = processedData[heroName];
-  return heroData ? heroData.winRate : 0.5;
+  if (!heroData) {
+    console.log(`未找到英雄 ${heroName} 的数据`);
+    return 0.5;
+  }
+  return heroData.winRate;
 };
 
 // 获取英雄对另一个英雄的克制率
 export const getCounterRate = (hero1Name, hero2Name, processedData) => {
   const hero1Data = processedData[hero1Name];
-  const hero2Id = processedData[hero2Name]?.id;
+  const hero2Data = processedData[hero2Name];
   
-  if (hero1Data && hero2Id && hero1Data.counters[hero2Id] !== undefined) {
-    return hero1Data.counters[hero2Id];
+  if (!hero1Data || !hero2Data) {
+    console.log(`未找到英雄数据: ${hero1Name} 或 ${hero2Name}`);
+    return 0.5;
   }
   
+  const hero2Id = hero2Data.id;
+  
+  if (hero1Data.counters && hero1Data.counters[hero2Id] !== undefined) {
+    const counterRate = hero1Data.counters[hero2Id];
+    console.log(`${hero1Name} vs ${hero2Name}: ${counterRate}`);
+    return counterRate;
+  }
+  
+  console.log(`未找到克制数据: ${hero1Name} vs ${hero2Name}`);
   return 0.5; // 默认50%
 };
 
@@ -159,12 +176,35 @@ export const getPlayerProficiency = (heroName, playerData, processedData) => {
 // 获取英雄间的配合胜率
 export const getSynergyRate = (hero1Name, hero2Name, playerData, processedData) => {
   if (!playerData) {
-    return 0.5; // 无玩家数据时返回默认值
+    // 无玩家数据时，基于英雄类型计算简单的配合关系
+    const hero1Data = processedData[hero1Name];
+    const hero2Data = processedData[hero2Name];
+    
+    if (!hero1Data || !hero2Data) {
+      return 0.5;
+    }
+    
+    // 简单的配合关系：基于英雄胜率的平均值
+    const avgWinRate = (hero1Data.winRate + hero2Data.winRate) / 2;
+    
+    // 如果两个英雄的胜率都比较高，配合关系稍好
+    if (avgWinRate > 0.52) {
+      return 0.52;
+    } else if (avgWinRate < 0.48) {
+      return 0.48;
+    }
+    
+    return 0.5;
   }
   
-  // 由于当前API限制，暂时返回默认值
-  // 后续可以通过分析玩家的比赛历史来计算真实的配合胜率
-  return 0.5;
+  // 有玩家数据时，可以基于玩家的历史比赛数据计算
+  // 由于当前API限制，暂时返回基于熟练度的配合关系
+  const hero1Proficiency = getPlayerProficiency(hero1Name, playerData, processedData);
+  const hero2Proficiency = getPlayerProficiency(hero2Name, playerData, processedData);
+  
+  // 基于熟练度计算配合关系
+  const avgProficiency = (hero1Proficiency + hero2Proficiency) / 200; // 标准化到0-1
+  return 0.45 + (avgProficiency * 0.1); // 在0.45-0.55之间变化
 };
 
 // 归一化熟练度得分（0-100）
