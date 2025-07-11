@@ -99,7 +99,8 @@ function Dota2HeroPicker() {
   const defaultPlayerProfiles = {
     kai: { steamId: '139582452', name: '恺' },
     wangning: { steamId: '139877687', name: '王宁' },
-    body: { steamId: '136680163', name: 'Body' }
+    body: { steamId: '136680163', name: 'Body' },
+    lige: { steamId: '139254929', name: '李哥' }
   };
   
   const [playerProfiles, setPlayerProfiles] = useState(() => {

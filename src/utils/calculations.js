@@ -1,34 +1,39 @@
-// 推荐算法计算工具 - 优化熟练度和克制关系计算
+// 推荐算法计算工具 - 优化版本
 import { 
   getHeroWinRate, 
   getCounterRate, 
   getSynergyRate,
-  normalizeProficiencyScores 
+  normalizeProficiencyScores,
+  getDataQualityReport
 } from '../services/dataProcessor';
 
-// 权重配置
+// 优化后的权重配置
 const WEIGHTS = {
   WITH_PLAYER: {
     versionWinRate: 0.20,
-    counterRelation: 0.50,
+    counterRelation: 0.45,    // 略微降低，因为数据质量提升
     synergyRelation: 0.20,
-    playerProficiency: 0.10
+    playerProficiency: 0.15   // 略微提升玩家熟练度权重
   },
   WITHOUT_PLAYER: {
-    versionWinRate: 0.25,
-    counterRelation: 0.75
+    versionWinRate: 0.30,     // 提升版本胜率权重
+    counterRelation: 0.70
   }
 };
 
-// 计算版本胜率得分（0-100）
+// 计算版本胜率得分（0-100）- 优化版
 const calculateVersionWinRateScore = (heroName, processedData) => {
   const winRate = getHeroWinRate(heroName, processedData);
-  // 将胜率归一化到更小的范围，减少极端值的影响
-  const normalizedScore = Math.max(30, Math.min(70, winRate * 100));
-  return normalizedScore;
+  
+  // 使用更平滑的归一化曲线
+  // 将40%-60%的胜率映射到20-80分，减少极端值
+  const normalizedScore = 50 + (winRate - 0.5) * 300;
+  
+  // 限制在合理范围内
+  return Math.max(20, Math.min(80, normalizedScore));
 };
 
-// 优化的克制关系计算
+// 优化的克制关系计算 - 考虑数据质量
 const calculateCounterScore = (heroName, enemyHeroes, processedData) => {
   console.log(`\n=== 计算 ${heroName} 的克制关系 ===`);
   
@@ -39,24 +44,32 @@ const calculateCounterScore = (heroName, enemyHeroes, processedData) => {
   }
   
   let totalCounterScore = 0;
+  let totalWeight = 0;
   
   // 对每个敌方英雄分别计算克制关系
   enemyHeroes.forEach(enemy => {
     const counterRate = getCounterRate(heroName, enemy.name, processedData);
     
+    // 根据克制率的极端程度给予不同权重
+    // 极端克制关系（<0.4或>0.6）更可靠
+    const extremity = Math.abs(counterRate - 0.5);
+    const weight = 1 + extremity * 2; // 权重1-2
+    
     // 将克制胜率转换为分数
-    // 0.3 -> 0分, 0.5 -> 50分, 0.7 -> 100分
-    const counterScore = Math.max(0, Math.min(100, (counterRate - 0.3) * 250));
+    // 使用更平滑的曲线：0.3 -> 10分, 0.5 -> 50分, 0.7 -> 90分
+    const counterScore = 50 + (counterRate - 0.5) * 200;
+    const clampedScore = Math.max(10, Math.min(90, counterScore));
     
-    totalCounterScore += counterScore;
+    totalCounterScore += clampedScore * weight;
+    totalWeight += weight;
     
-    console.log(`  vs ${enemy.name}: 胜率${(counterRate * 100).toFixed(1)}% -> 得分${counterScore.toFixed(1)}`);
+    console.log(`  vs ${enemy.name}: 胜率${(counterRate * 100).toFixed(1)}% -> 得分${clampedScore.toFixed(1)} (权重${weight.toFixed(2)})`);
   });
   
-  // 计算平均克制得分
-  const avgCounterScore = totalCounterScore / enemyHeroes.length;
+  // 计算加权平均克制得分
+  const avgCounterScore = totalWeight > 0 ? totalCounterScore / totalWeight : 50;
   
-  console.log(`  平均克制得分: ${avgCounterScore.toFixed(1)}`);
+  console.log(`  加权平均克制得分: ${avgCounterScore.toFixed(1)}`);
   
   return avgCounterScore;
 };
@@ -78,12 +91,13 @@ const calculateSynergyScore = (heroName, allyHeroes, playerData, processedData) 
     const synergyRate = getSynergyRate(heroName, ally.name, playerData, processedData);
     
     // 将配合胜率转换为分数
-    // 0.4 -> 0分, 0.5 -> 50分, 0.6 -> 100分
-    const synergyScore = Math.max(0, Math.min(100, (synergyRate - 0.4) * 500));
+    // 使用更宽松的范围：0.45 -> 25分, 0.5 -> 50分, 0.55 -> 75分
+    const synergyScore = 50 + (synergyRate - 0.5) * 500;
+    const clampedScore = Math.max(25, Math.min(75, synergyScore));
     
-    totalSynergyScore += synergyScore;
+    totalSynergyScore += clampedScore;
     
-    console.log(`  + ${ally.name}: 配合率${(synergyRate * 100).toFixed(1)}% -> 得分${synergyScore.toFixed(1)}`);
+    console.log(`  + ${ally.name}: 配合率${(synergyRate * 100).toFixed(1)}% -> 得分${clampedScore.toFixed(1)}`);
   });
   
   // 计算平均配合得分
@@ -94,7 +108,7 @@ const calculateSynergyScore = (heroName, allyHeroes, playerData, processedData) 
   return avgSynergyScore;
 };
 
-// 优化的熟练度计算 - 减少总局数的影响
+// 优化的熟练度计算 - 考虑最近游戏时间
 const calculateProficiencyScore = (heroName, normalizedProficiency, processedData) => {
   if (!normalizedProficiency || !processedData[heroName]) {
     return 0;
@@ -108,59 +122,23 @@ const calculateProficiencyScore = (heroName, normalizedProficiency, processedDat
   }
   
   // 使用优化后的熟练度分数
-  return profData.optimizedScore || 0;
-};
-
-// 优化的熟练度归一化函数
-export const optimizedNormalizeProficiencyScores = (playerData) => {
-  if (!playerData || !playerData.proficiency) {
-    return {};
+  let score = profData.optimizedScore || 0;
+  
+  // 如果有最近游戏时间，考虑时间衰减
+  if (profData.lastPlayed) {
+    const daysSinceLastPlayed = (Date.now() - profData.lastPlayed * 1000) / (1000 * 60 * 60 * 24);
+    
+    // 30天内不衰减，之后每30天衰减10%
+    if (daysSinceLastPlayed > 30) {
+      const decayFactor = Math.max(0.5, 1 - (daysSinceLastPlayed - 30) / 300);
+      score *= decayFactor;
+    }
   }
   
-  const normalized = {};
-  const proficiencyEntries = Object.entries(playerData.proficiency);
-  
-  // 计算所有英雄的优化熟练度分数
-  const optimizedScores = proficiencyEntries.map(([heroId, data]) => {
-    const { games, wins, winRate } = data;
-    
-    // 新的熟练度计算公式：
-    // 基础分 = 胜率 * 60 (最高60分)
-    // 经验加成 = ln(games + 1) * 8 (最高约40分)
-    // 胜场加成 = sqrt(wins) * 2 (额外加成)
-    
-    const baseScore = winRate * 60;
-    const experienceBonus = Math.log(games + 1) * 8;
-    const winsBonus = Math.sqrt(wins) * 2;
-    
-    const totalScore = baseScore + experienceBonus + winsBonus;
-    
-    console.log(`英雄 ${heroId}: 局数${games}, 胜率${(winRate * 100).toFixed(1)}%, 基础分${baseScore.toFixed(1)}, 经验加成${experienceBonus.toFixed(1)}, 胜场加成${winsBonus.toFixed(1)}, 总分${totalScore.toFixed(1)}`);
-    
-    return { heroId, score: totalScore };
-  });
-  
-  // 找出最高分数用于归一化
-  const maxScore = Math.max(...optimizedScores.map(s => s.score), 1);
-  
-  // 归一化到0-100分
-  proficiencyEntries.forEach(([heroId, data]) => {
-    const scoreEntry = optimizedScores.find(s => s.heroId === heroId);
-    const normalizedScore = Math.min(100, (scoreEntry.score / maxScore) * 100);
-    
-    normalized[heroId] = {
-      ...data,
-      optimizedScore: normalizedScore,
-      normalizedScore: normalizedScore // 保持兼容性
-    };
-  });
-  
-  console.log('熟练度归一化完成，最高分:', maxScore.toFixed(1));
-  
-  return normalized;
+  return score;
 };
 
-// 计算单个英雄的推荐分数
+// 计算单个英雄的推荐分数 - 优化版
 export const calculateHeroScore = (
   heroName,
   allyHeroes,
@@ -185,7 +163,7 @@ export const calculateHeroScore = (
                       weights.counterRelation * counterScore;
     
     console.log(`权重分配: 版本胜率(${weights.versionWinRate}) + 克制关系(${weights.counterRelation})`);
-    console.log(`计算过程: ${weights.versionWinRate} × ${versionScore.toFixed(1)} + ${weights.counterRelation} × ${counterScore.toFixed(1)} = ${totalScore.toFixed(1)}`);
+    console.log(`总分: ${totalScore.toFixed(1)}`);
                       
     return {
       heroName,
@@ -198,9 +176,9 @@ export const calculateHeroScore = (
   }
   
   // 有特定玩家时的计算
-  const optimizedProficiency = optimizedNormalizeProficiencyScores(playerData);
+  const normalizedProficiency = normalizeProficiencyScores(playerData);
   const synergyScore = calculateSynergyScore(heroName, allyHeroes, playerData, processedData);
-  const proficiencyScore = calculateProficiencyScore(heroName, optimizedProficiency, processedData);
+  const proficiencyScore = calculateProficiencyScore(heroName, normalizedProficiency, processedData);
   
   console.log(`配合关系分: ${synergyScore.toFixed(1)}`);
   console.log(`熟练度分: ${proficiencyScore.toFixed(1)}`);
@@ -211,8 +189,8 @@ export const calculateHeroScore = (
                     weights.synergyRelation * synergyScore +
                     weights.playerProficiency * proficiencyScore;
   
-  console.log(`权重分配: 版本胜率(${weights.versionWinRate}) + 克制关系(${weights.counterRelation}) + 配合关系(${weights.synergyRelation}) + 熟练度(${weights.playerProficiency})`);
-  console.log(`计算过程: ${weights.versionWinRate} × ${versionScore.toFixed(1)} + ${weights.counterRelation} × ${counterScore.toFixed(1)} + ${weights.synergyRelation} × ${synergyScore.toFixed(1)} + ${weights.playerProficiency} × ${proficiencyScore.toFixed(1)} = ${totalScore.toFixed(1)}`);
+  console.log(`权重分配: 版本(${weights.versionWinRate}) + 克制(${weights.counterRelation}) + 配合(${weights.synergyRelation}) + 熟练(${weights.playerProficiency})`);
+  console.log(`总分: ${totalScore.toFixed(1)}`);
                     
   return {
     heroName,
@@ -226,7 +204,7 @@ export const calculateHeroScore = (
   };
 };
 
-// 获取英雄推荐列表
+// 获取英雄推荐列表 - 优化版
 export const getHeroRecommendations = (
   availableHeroes,
   allyHeroes,
@@ -240,6 +218,10 @@ export const getHeroRecommendations = (
   console.log(`当前友方英雄: ${allyHeroes.map(h => h.name).join(', ') || '无'}`);
   console.log(`当前敌方英雄: ${enemyHeroes.map(h => h.name).join(', ') || '无'}`);
   console.log(`有玩家数据: ${hasPlayer}`);
+  
+  // 获取数据质量报告
+  const qualityReport = getDataQualityReport(processedData);
+  console.log(`数据质量: ${qualityReport.heroesWithCounterData}/${qualityReport.totalHeroes}英雄有克制数据`);
   
   // 计算所有可选英雄的分数
   const heroScores = availableHeroes.map(hero => 
@@ -260,9 +242,12 @@ export const getHeroRecommendations = (
   heroScores.slice(0, 10).forEach((score, index) => {
     const breakdown = score.breakdown;
     if (hasPlayer) {
-      console.log(`${index + 1}. ${score.heroName}: ${score.totalScore.toFixed(1)}分 (版本:${breakdown.versionScore.toFixed(1)}, 克制:${breakdown.counterScore.toFixed(1)}, 配合:${breakdown.synergyScore.toFixed(1)}, 熟练:${breakdown.proficiencyScore.toFixed(1)})`);
+      console.log(`${index + 1}. ${score.heroName}: ${score.totalScore.toFixed(1)}分 ` +
+                  `(版本:${breakdown.versionScore.toFixed(1)}, 克制:${breakdown.counterScore.toFixed(1)}, ` +
+                  `配合:${breakdown.synergyScore.toFixed(1)}, 熟练:${breakdown.proficiencyScore.toFixed(1)})`);
     } else {
-      console.log(`${index + 1}. ${score.heroName}: ${score.totalScore.toFixed(1)}分 (版本:${breakdown.versionScore.toFixed(1)}, 克制:${breakdown.counterScore.toFixed(1)})`);
+      console.log(`${index + 1}. ${score.heroName}: ${score.totalScore.toFixed(1)}分 ` +
+                  `(版本:${breakdown.versionScore.toFixed(1)}, 克制:${breakdown.counterScore.toFixed(1)})`);
     }
   });
   
@@ -274,7 +259,7 @@ export const getHeroRecommendations = (
   }));
 };
 
-// 计算团队胜率
+// 计算团队胜率 - 优化版
 export const calculateTeamWinRate = (
   allyHeroes,
   enemyHeroes,
@@ -292,7 +277,7 @@ export const calculateTeamWinRate = (
   let enemyScore = 0;
   
   // 版本胜率影响
-  const versionWinRateWeight = 0.3;
+  const versionWinRateWeight = 0.25; // 略微降低
   console.log('计算版本胜率优势...');
   
   allyHeroes.forEach(hero => {
@@ -310,33 +295,42 @@ export const calculateTeamWinRate = (
   });
   
   // 克制关系影响
-  const counterWeight = 0.6;
-  console.log('计算克制关系优势...');
+  const counterWeight = 0.65; // 提升克制关系权重
+  console.log('\n计算克制关系优势...');
+  
+  let totalCounterAdvantage = 0;
+  let counterCount = 0;
   
   allyHeroes.forEach(ally => {
     enemyHeroes.forEach(enemy => {
       const allyCounterRate = getCounterRate(ally.name, enemy.name, processedData);
       const enemyCounterRate = getCounterRate(enemy.name, ally.name, processedData);
       
-      const allyAdvantage = (allyCounterRate - 0.5) * 100;
-      const enemyAdvantage = (enemyCounterRate - 0.5) * 100;
+      const netAdvantage = (allyCounterRate - enemyCounterRate) * 100;
+      totalCounterAdvantage += netAdvantage;
+      counterCount++;
       
-      allyScore += allyAdvantage * counterWeight;
-      enemyScore += enemyAdvantage * counterWeight;
-      
-      console.log(`  ${ally.name} vs ${enemy.name}: ${(allyCounterRate * 100).toFixed(1)}% (优势${allyAdvantage.toFixed(1)})`);
+      if (Math.abs(netAdvantage) > 10) {
+        console.log(`  ${ally.name} vs ${enemy.name}: 净优势${netAdvantage.toFixed(1)}%`);
+      }
     });
   });
+  
+  // 使用净优势而不是分别计算
+  const avgCounterAdvantage = totalCounterAdvantage / counterCount;
+  allyScore += avgCounterAdvantage * counterWeight;
+  
+  console.log(`\n平均克制优势: ${avgCounterAdvantage.toFixed(1)}%`);
   
   // 熟练度影响
   if (hasPlayer && playerData) {
     const proficiencyWeight = 0.1;
-    console.log('计算熟练度优势...');
+    console.log('\n计算熟练度优势...');
     
-    const optimizedProficiency = optimizedNormalizeProficiencyScores(playerData);
+    const normalizedProficiency = normalizeProficiencyScores(playerData);
     
     allyHeroes.forEach(hero => {
-      const profScore = calculateProficiencyScore(hero.name, optimizedProficiency, processedData);
+      const profScore = calculateProficiencyScore(hero.name, normalizedProficiency, processedData);
       const advantage = profScore - 50;
       allyScore += advantage * proficiencyWeight;
       console.log(`  我方 ${hero.name}: 熟练度${profScore.toFixed(1)}, 优势${advantage.toFixed(1)}`);
@@ -348,11 +342,11 @@ export const calculateTeamWinRate = (
   const baseWinRate = 50;
   const allyWinRate = baseWinRate + scoreDiff;
   
-  // 限制在合理范围内
-  const finalAllyWinRate = Math.max(25, Math.min(75, allyWinRate));
+  // 使用更平滑的限制范围
+  const finalAllyWinRate = Math.max(30, Math.min(70, allyWinRate));
   const finalEnemyWinRate = 100 - finalAllyWinRate;
   
-  console.log(`我方总得分: ${allyScore.toFixed(1)}`);
+  console.log(`\n我方总得分: ${allyScore.toFixed(1)}`);
   console.log(`敌方总得分: ${enemyScore.toFixed(1)}`);
   console.log(`得分差: ${scoreDiff.toFixed(1)}`);
   console.log(`最终胜率: 我方${finalAllyWinRate.toFixed(1)}% vs 敌方${finalEnemyWinRate.toFixed(1)}%`);
@@ -362,6 +356,3 @@ export const calculateTeamWinRate = (
     enemy: finalEnemyWinRate
   };
 };
-
-// 导出优化后的函数，替换原有的normalizeProficiencyScores
-export { optimizedNormalizeProficiencyScores as normalizeProficiencyScores };
