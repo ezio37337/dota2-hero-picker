@@ -7,64 +7,181 @@ import { savePlayerProfiles, loadPlayerProfiles } from './utils/storage';
 // 导入英雄数据
 import { heroesData as generatedHeroesData } from './data/heroesData.generated';
 
-// 自定义英雄名称映射（英文名 -> 中文名）
+// 自定义英雄名称映射（英文名 -> 中文名）- 完全汉化
 const customHeroNames = {
+  // A
+  "Abaddon": "亚巴顿",
+  "Alchemist": "炼金术士",
+  "Ancient Apparition": "远古冰魄",
   "Anti-Mage": "敌法师",
+  "Arc Warden": "天穹守望者",
   "Axe": "斧王",
+  
+  // B
+  "Bane": "祸乱之源",
+  "Batrider": "蝙蝠骑士",
+  "Beastmaster": "兽王",
+  "Bloodseeker": "血魔",
+  "Bounty Hunter": "赏金猎人",
+  "Brewmaster": "酒仙",
+  "Bristleback": "钢背兽",
+  "Broodmother": "育母蜘蛛",
+  
+  // C
+  "Centaur Warrunner": "半人马战行者",
+  "Chaos Knight": "混沌骑士",
+  "Chen": "陈",
+  "Clinkz": "克林克兹",
+  "Clockwerk": "发条技师",
   "Crystal Maiden": "水晶室女",
-  "Shadow Fiend": "影魔",
-  "Phantom Lancer": "幻影长矛手",
-  "Pudge": "帕吉",
-  "Razor": "剃刀",
-  "Storm Spirit": "风暴之灵",
-  "Vengeful Spirit": "复仇之魂",
-  "Windranger": "风行者",
-  "Zeus": "宙斯",
+  
+  // D
+  "Dark Seer": "黑暗贤者",
+  "Dark Willow": "邪影芳灵",
+  "Dawnbreaker": "破晓辰星",
+  "Dazzle": "戴泽",
+  "Death Prophet": "死亡先知",
+  "Disruptor": "干扰者",
+  "Doom": "末日使者",
+  "Dragon Knight": "龙骑士",
+  "Drow Ranger": "卓尔游侠",
+  
+  // E
+  "Earth Spirit": "大地之灵",
+  "Earthshaker": "撼地者",
+  "Elder Titan": "上古巨神",
+  "Ember Spirit": "灰烬之灵",
+  "Enchantress": "魅惑魔女",
+  "Enigma": "谜团",
+  
+  // F
+  "Faceless Void": "虚空假面",
+  
+  // G
+  "Grimstroke": "天涯墨客",
+  "Gyrocopter": "矮人直升机",
+  
+  // H
+  "Hoodwink": "森海飞霞",
+  "Huskar": "哈斯卡",
+  
+  // I
+  "Invoker": "祈求者",
+  "Io": "艾欧",
+  
+  // J
+  "Jakiro": "杰奇洛",
+  "Juggernaut": "主宰",
+  
+  // K
+  "Keeper of the Light": "光之守卫",
+  "Kez": "鸢尾奇侠",
   "Kunkka": "昆卡",
+  
+  // L
+  "Legion Commander": "军团指挥官",
+  "Leshrac": "拉席克",
+  "Lich": "巫妖",
+  "Lifestealer": "噬魂鬼",
   "Lina": "莉娜",
   "Lion": "莱恩",
-  "Shadow Shaman": "暗影萨满",
-  "Tidehunter": "潮汐猎人",
-  "Witch Doctor": "巫医",
-  "Lich": "巫妖",
-  "Riki": "力丸",
-  "Enigma": "谜团",
-  "Tinker": "修补匠",
-  "Sniper": "狙击手",
-  "Necrophos": "瘟疫法师",
-  "Warlock": "术士",
-  "Beastmaster": "兽王",
-  "Queen of Pain": "痛苦女王",
-  "Death Prophet": "死亡先知",
-  "Phantom Assassin": "幻影刺客",
-  "Templar Assassin": "圣堂刺客",
-  "Dragon Knight": "龙骑士",
-  "Dazzle": "戴泽",
-  "Nature's Prophet": "先知",
-  "Lifestealer": "噬魂鬼",
-  "Dark Seer": "黑暗贤者",
-  "Invoker": "祈求者",
-  "Spirit Breaker": "裂魂人",
-  "Alchemist": "炼金术士",
+  "Lone Druid": "德鲁伊",
+  "Luna": "露娜",
   "Lycan": "狼人",
-  "Brewmaster": "酒仙",
-  "Chaos Knight": "混沌骑士",
-  "Treant Protector": "树精卫士",
-  "Legion Commander": "军团指挥官",
-  "Techies": "工程师",
-  "Ember Spirit": "灰烬之灵",
-  "Earth Spirit": "大地之灵",
-  "Phoenix": "凤凰",
-  "Oracle": "神谕者",
-  "Monkey King": "齐天大圣",
-  "Pangolier": "石鳞剑士",
-  "Mars": "玛尔斯",
-  "Void Spirit": "虚无之灵",
-  "Snapfire": "电炎绝手",
-  "Dawnbreaker": "破晓辰星",
+  
+  // M
+  "Magnus": "马格纳斯",
   "Marci": "玛西",
+  "Mars": "玛尔斯",
+  "Medusa": "美杜莎",
+  "Meepo": "米波",
+  "Mirana": "米拉娜",
+  "Monkey King": "齐天大圣",
+  "Morphling": "变体精灵",
+  "Muerta": "琼英碧灵",
+  
+  // N
+  "Naga Siren": "娜迦海妖",
+  "Nature's Prophet": "先知",
+  "Necrophos": "瘟疫法师",
+  "Night Stalker": "暗夜魔王",
+  "Nyx Assassin": "司夜刺客",
+  
+  // O
+  "Ogre Magi": "食人魔魔法师",
+  "Omniknight": "全能骑士",
+  "Oracle": "神谕者",
+  "Outworld Destroyer": "殁境神蚀者",
+  
+  // P
+  "Pangolier": "石鳞剑士",
+  "Phantom Assassin": "幻影刺客",
+  "Phantom Lancer": "幻影长矛手",
+  "Phoenix": "凤凰",
   "Primal Beast": "獸",
-  // 可以继续添加更多自定义名称
+  "Puck": "帕克",
+  "Pudge": "帕吉",
+  "Pugna": "帕格纳",
+  
+  // Q
+  "Queen of Pain": "痛苦女王",
+  
+  // R
+  "Razor": "剃刀",
+  "Riki": "力丸",
+  "Ringmaster": "马戏团团长",
+  "Rubick": "拉比克",
+  
+  // S
+  "Sand King": "沙王",
+  "Shadow Demon": "暗影恶魔",
+  "Shadow Fiend": "影魔",
+  "Shadow Shaman": "暗影萨满",
+  "Silencer": "沉默术士",
+  "Skywrath Mage": "天怒法师",
+  "Slardar": "斯拉达",
+  "Slark": "斯拉克",
+  "Snapfire": "电炎绝手",
+  "Sniper": "狙击手",
+  "Spectre": "幽鬼",
+  "Spirit Breaker": "裂魂人",
+  "Storm Spirit": "风暴之灵",
+  "Sven": "斯温",
+  
+  // T
+  "Techies": "工程师",
+  "Templar Assassin": "圣堂刺客",
+  "Terrorblade": "恐怖利刃",
+  "Tidehunter": "潮汐猎人",
+  "Timbersaw": "伐木机",
+  "Tinker": "修补匠",
+  "Tiny": "小小",
+  "Treant Protector": "树精卫士",
+  "Troll Warlord": "巨魔战将",
+  "Tusk": "巨牙海民",
+  
+  // U
+  "Underlord": "孽主",
+  "Undying": "不朽尸王",
+  "Ursa": "熊战士",
+  
+  // V
+  "Vengeful Spirit": "复仇之魂",
+  "Venomancer": "剧毒术士",
+  "Viper": "冥界亚龙",
+  "Visage": "维萨吉",
+  "Void Spirit": "虚无之灵",
+  
+  // W
+  "Warlock": "术士",
+  "Weaver": "编织者",
+  "Windranger": "风行者",
+  "Winter Wyvern": "寒冬飞龙",
+  "Witch Doctor": "巫医",
+  "Wraith King": "冥魂大帝",
+  
+  // Z
+  "Zeus": "宙斯"
 };
 
 // 处理英雄数据，应用自定义名称
@@ -123,6 +240,7 @@ function Dota2HeroPicker() {
   const [processedData, setProcessedData] = useState(null);
   const [playerData, setPlayerData] = useState({});
   const [error, setError] = useState(null);
+  const [dataQuality, setDataQuality] = useState(null);
 
   // 使用useCallback来稳定函数引用
   const loadPlayerDataForProfile = useCallback(async (playerId) => {
@@ -156,6 +274,21 @@ function Dota2HeroPicker() {
         const processed = processHeroData(heroStats, counterMatrix);
         setProcessedData(processed);
         
+        // 获取数据质量报告
+        const qualityReport = {
+          totalHeroes: heroStats.length,
+          heroesWithCounterData: Object.keys(counterMatrix).length,
+          totalCounterRelations: Object.values(counterMatrix).reduce((sum, counters) => 
+            sum + Object.keys(counters).length, 0),
+          averageCountersPerHero: 0
+        };
+        
+        if (qualityReport.heroesWithCounterData > 0) {
+          qualityReport.averageCountersPerHero = 
+            (qualityReport.totalCounterRelations / qualityReport.heroesWithCounterData).toFixed(1);
+        }
+        
+        setDataQuality(qualityReport);
         setIsLoading(false);
       } catch (err) {
         console.error('加载数据失败:', err);
@@ -522,6 +655,14 @@ function Dota2HeroPicker() {
           )}
         </div>
 
+        {/* 数据质量指示器 */}
+        {dataQuality && (
+          <div className="mb-4 text-xs text-gray-500 text-center">
+            数据完整性: {dataQuality.heroesWithCounterData}/{dataQuality.totalHeroes}英雄 | 
+            平均{dataQuality.averageCountersPerHero}个克制关系/英雄
+          </div>
+        )}
+
         {/* 控制面板 */}
         <div className="mb-6 flex justify-center gap-4">
           <button
@@ -654,10 +795,6 @@ function Dota2HeroPicker() {
                         <>
                           <div className="flex justify-between">
                             <span>配合关系:</span>
-                            <span className="font-semibold">{hero.breakdown.synergyScore.toFixed(1)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>个人熟练:</span>
                             <span className="font-semibold">{hero.breakdown.proficiencyScore.toFixed(1)}</span>
                           </div>
                         </>
@@ -669,9 +806,9 @@ function Dota2HeroPicker() {
             </div>
             <div className="text-sm text-gray-600 mt-3">
               {currentPlayer ? (
-                <span>推荐基于：版本胜率(35%) + 克制关系(40%) + 配合关系(15%) + 熟练度(10%)</span>
+                <span>推荐基于：版本胜率(20%) + 克制关系(45%) + 配合关系(20%) + 熟练度(15%)</span>
               ) : (
-                <span>推荐基于：版本胜率(40%) + 克制关系(60%)</span>
+                <span>推荐基于：版本胜率(30%) + 克制关系(70%)</span>
               )}
             </div>
           </div>
@@ -779,4 +916,8 @@ function Dota2HeroPicker() {
   );
 }
 
-export default Dota2HeroPicker;
+export default Dota2HeroPicker;ibold">{hero.breakdown.synergyScore.toFixed(1)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>个人熟练:</span>
+                            <span className="font-sem

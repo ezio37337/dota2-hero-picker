@@ -21,16 +21,13 @@ const WEIGHTS = {
   }
 };
 
-// 计算版本胜率得分（0-100）- 优化版
+// 计算版本胜率得分（0-100）
 const calculateVersionWinRateScore = (heroName, processedData) => {
   const winRate = getHeroWinRate(heroName, processedData);
-  
-  // 使用更平滑的归一化曲线
-  // 将40%-60%的胜率映射到20-80分，减少极端值
-  const normalizedScore = 50 + (winRate - 0.5) * 300;
-  
-  // 限制在合理范围内
-  return Math.max(20, Math.min(80, normalizedScore));
+  // 将胜率归一化到0-100分，保持原有的计算方式
+  // 45% -> 30分, 50% -> 50分, 55% -> 70分
+  const normalizedScore = Math.max(30, Math.min(70, winRate * 100));
+  return normalizedScore;
 };
 
 // 优化的克制关系计算 - 考虑数据质量
