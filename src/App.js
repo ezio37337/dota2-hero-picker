@@ -810,9 +810,9 @@ function Dota2HeroPicker() {
             </div>
             <div className="text-sm text-gray-600 mt-3">
               {currentPlayer ? (
-                <span>推荐基于：版本胜率(20%) + 克制关系(45%) + 配合关系(20%) + 熟练度(15%)</span>
+                <span>推荐基于：版本胜率(20%) + 克制关系(50%) + 配合关系(20%) + 熟练度(10%)</span>
               ) : (
-                <span>推荐基于：版本胜率(30%) + 克制关系(70%)</span>
+                <span>推荐基于：版本胜率(25%) + 克制关系(75%)</span>
               )}
             </div>
           </div>

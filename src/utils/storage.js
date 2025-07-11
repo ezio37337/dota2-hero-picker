@@ -81,7 +81,8 @@ export const loadPlayerCache = (playerId) => {
   const playerData = cache[playerId];
   
   // 玩家数据6小时过期
-  if (playerData && !isDataExpired(playerData.fetchTime, 6 * 60 * 60 * 1000)) {
+  const SIX_HOURS = 6 * 60 * 60 * 1000;
+  if (playerData && playerData.fetchTime && (Date.now() - playerData.fetchTime < SIX_HOURS)) {
     return playerData;
   }
   return null;
@@ -92,13 +93,24 @@ export const savePlayerProfiles = (profiles) => {
   saveToStorage(STORAGE_KEYS.PLAYER_PROFILES, profiles);
 };
 
-// 读取玩家配置
+// 读取玩家配置 - 确保包含李哥
 export const loadPlayerProfiles = () => {
-  return loadFromStorage(STORAGE_KEYS.PLAYER_PROFILES) || {
+  const defaultProfiles = {
     kai: { steamId: '139582452', name: '恺' },
     wangning: { steamId: '139877687', name: '王宁' },
-    body: { steamId: '136680163', name: 'Body' }
+    body: { steamId: '136680163', name: 'Body' },
+    lige: { steamId: '139254929', name: '李哥' }
   };
+  
+  const savedProfiles = loadFromStorage(STORAGE_KEYS.PLAYER_PROFILES);
+  
+  // 如果没有保存的配置，或者缺少李哥，返回默认配置
+  if (!savedProfiles || !savedProfiles.lige) {
+    savePlayerProfiles(defaultProfiles);
+    return defaultProfiles;
+  }
+  
+  return savedProfiles;
 };
 
 // 清除所有缓存
