@@ -795,6 +795,10 @@ function Dota2HeroPicker() {
                         <>
                           <div className="flex justify-between">
                             <span>配合关系:</span>
+                            <span className="font-semibold">{hero.breakdown.synergyScore.toFixed(1)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>个人熟练:</span>
                             <span className="font-semibold">{hero.breakdown.proficiencyScore.toFixed(1)}</span>
                           </div>
                         </>
@@ -916,8 +920,4 @@ function Dota2HeroPicker() {
   );
 }
 
-export default Dota2HeroPicker;ibold">{hero.breakdown.synergyScore.toFixed(1)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>个人熟练:</span>
-                            <span className="font-sem
+export default Dota2HeroPicker;
