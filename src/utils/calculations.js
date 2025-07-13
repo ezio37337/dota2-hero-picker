@@ -3,7 +3,7 @@ import {
   getHeroWinRate, 
   getCounterRate, 
   getSynergyRate,
-  normalizeProficiencyScores 
+  normalizeProficiencyScores as normalizeScores 
 } from '../services/dataProcessor';
 
 // 权重配置
@@ -101,7 +101,7 @@ const calculateSynergyScore = (heroName, allyHeroes, playerData, processedData) 
   return avgSynergyScore;
 };
 
-// 熟练度计算 - 回退到上个版本
+// 熟练度计算 - 使用当前版本
 const calculateProficiencyScore = (heroName, normalizedProficiency, processedData) => {
   if (!normalizedProficiency || !processedData[heroName]) {
     return 0;
@@ -114,46 +114,8 @@ const calculateProficiencyScore = (heroName, normalizedProficiency, processedDat
     return 0;
   }
   
-  // 使用归一化后的熟练度分数
-  return profData.normalizedScore || 0;
-};
-
-// 归一化熟练度分数 - 回退到上个版本
-export const normalizeProficiencyScores = (playerData) => {
-  if (!playerData || !playerData.proficiency) {
-    return {};
-  }
-  
-  const normalized = {};
-  const proficiencyEntries = Object.entries(playerData.proficiency);
-  
-  // 计算所有英雄的熟练度分数
-  const scores = proficiencyEntries.map(([heroId, data]) => {
-    const { games, wins, winRate } = data;
-    
-    // 原版熟练度计算公式
-    const proficiency = (wins * 2 + games) * (winRate * 100) / 100;
-    
-    return { heroId, score: proficiency };
-  });
-  
-  // 找出最高分数用于归一化
-  const maxScore = Math.max(...scores.map(s => s.score), 1);
-  
-  // 归一化到0-100分
-  proficiencyEntries.forEach(([heroId, data]) => {
-    const scoreEntry = scores.find(s => s.heroId === heroId);
-    const normalizedScore = Math.min(100, (scoreEntry.score / maxScore) * 100);
-    
-    normalized[heroId] = {
-      ...data,
-      normalizedScore: normalizedScore
-    };
-  });
-  
-  console.log('熟练度归一化完成，最高分:', maxScore.toFixed(1));
-  
-  return normalized;
+  // 使用优化后的熟练度分数
+  return profData.optimizedScore || profData.normalizedScore || 0;
 };
 
 // 计算单个英雄的推荐分数
@@ -194,7 +156,7 @@ export const calculateHeroScore = (
   }
   
   // 有特定玩家时的计算
-  const normalizedProficiency = normalizeProficiencyScores(playerData);
+  const normalizedProficiency = normalizeScores(playerData);
   const synergyScore = calculateSynergyScore(heroName, allyHeroes, playerData, processedData);
   const proficiencyScore = calculateProficiencyScore(heroName, normalizedProficiency, processedData);
   
@@ -329,7 +291,7 @@ export const calculateTeamWinRate = (
     const proficiencyWeight = 0.1;
     console.log('计算熟练度优势...');
     
-    const normalizedProficiency = normalizeProficiencyScores(playerData);
+    const normalizedProficiency = normalizeScores(playerData);
     
     allyHeroes.forEach(hero => {
       const profScore = calculateProficiencyScore(hero.name, normalizedProficiency, processedData);
